@@ -1,7 +1,9 @@
 import fetchImages from './API/apiService';
 import createMarkUp from './createMarkUp';
 import openImageOverlay from './overlay';
-//импортнуть инфинит скролл
+import '../css/grid-gallery.css';
+import notifications from './notifications';
+const throttle = require('lodash.throttle');
 
 const refs = {
     searchForm: document.querySelector('#search-form'),
@@ -15,6 +17,12 @@ const queryObject = {
     resultsPerPage: 12,
 };
 
+const ioOptions = {
+    rootMargin: '800px',
+};
+
+const io = new IntersectionObserver(onEntry, ioOptions);
+
 refs.searchForm.addEventListener('submit', searchFormHandler);
 refs.loadMoreBtn.addEventListener('click', onLoadMoreBtnHandler);
 refs.gallery.addEventListener('click', onImageClickHandler);
@@ -22,13 +30,27 @@ refs.gallery.addEventListener('click', onImageClickHandler);
 function searchFormHandler(event) {
     event.preventDefault();
     queryObject.searchValue = event.target.elements.query.value;
-    clearPreviousResult();
-    getImagesList();
+    if (queryObject.searchValue) {
+        clearPreviousResult();
+        getImagesList();
+    } else {
+        notifications.emptyQueryError();
+    }
 }
 
-function onLoadMoreBtnHandler() {
+async function onLoadMoreBtnHandler() {
     queryObject.page++;
-    getImagesList();
+    await getImagesList();
+    scroll();
+}
+
+function scroll() {
+    const coordY = window.scrollY + window.innerHeight - 98;
+    const scrollOptions = {
+        top: coordY,
+        behavior: 'smooth',
+    };
+    window.scrollTo(scrollOptions);
 }
 
 function onImageClickHandler(event) {
@@ -40,9 +62,22 @@ function onImageClickHandler(event) {
 }
 
 async function getImagesList() {
-    const data = await fetchImages(queryObject);
-    writeResponseToLocalStorage(data);
-    createMarkUp(data, refs.gallery);
+    const data = await fetchImages(queryObject).catch(error =>
+        notifications.fetchError(error),
+    );
+    if (data) {
+        if (data.length > 0) {
+            writeResponseToLocalStorage(data);
+            createMarkUp(data, refs.gallery);
+            if (!refs.searchForm.classList.contains('search-form--fixed-top')) {
+                refs.searchForm.classList.add('search-form--fixed-top');
+            }
+            refs.loadMoreBtn.classList.add('btn-load-more--vissible');
+            io.observe(refs.loadMoreBtn);
+        } else {
+            notifications.alertNoResult();
+        }
+    }
 }
 
 function writeResponseToLocalStorage(data) {
@@ -53,4 +88,13 @@ function clearPreviousResult() {
     queryObject.page = 1;
     refs.gallery.innerHTML = '';
     localStorage.removeItem('responseObj');
+}
+
+function onEntry(entries, observer) {
+    entries.forEach(entry => {
+        if (entry.isIntersecting) {
+            queryObject.page++;
+            getImagesList();
+        }
+    });
 }
