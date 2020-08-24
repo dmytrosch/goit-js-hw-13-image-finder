@@ -3,7 +3,6 @@ import createMarkUp from './createMarkUp';
 import openImageOverlay from './overlay';
 import '../css/grid-gallery.css';
 import notifications from './notifications';
-const throttle = require('lodash.throttle');
 
 const refs = {
     searchForm: document.querySelector('#search-form'),
