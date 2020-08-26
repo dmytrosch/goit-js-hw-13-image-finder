@@ -82,8 +82,8 @@ async function getImagesList() {
 function writeResponseToLocalStorage(data) {
     const prevStringValue = localStorage.getItem('responseObj');
     const prevObjValue = JSON.parse(prevStringValue);
-    if(prevObjValue){
-        data.push(...prevObjValue)
+    if (prevObjValue) {
+        data = [...data, ...prevObjValue];
     }
     const string = JSON.stringify(data);
     localStorage.setItem('responseObj', string);
